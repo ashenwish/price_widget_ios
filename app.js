@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------- данные по умолчанию (₽, ориентировочно — правится в ⚙) ----------
-const CATS = ['Предметка', 'Интерьер', 'Архвиз', 'Продукт', 'Игровые ассеты', 'Анимация', 'Unreal 5', 'Веб и дизайн', 'Почасово'];
+const CATS = ['Предметка', 'Персонаж', 'Интерьер', 'Архвиз', 'Продукт', 'Игровые ассеты', 'Анимация', 'Unreal 5', 'Веб и дизайн', 'Почасово'];
 // тип блока: lv — три уровня сложности, single — одна цена, hour — ставка за час
 const TYPES = { lv: 'Три уровня', single: 'Одна цена', hour: 'За час' };
 const LV = ['Лёгк.', 'Средн.', 'Сложн.'];
@@ -29,7 +29,11 @@ const DEFAULT_CATALOG = [
   ['Веб и дизайн', 'Телеграм-бот', 8000, 25000, 70000],
   ['Почасово', 'Работа по часам', 1500, 0, 0, 'hour'],
   ['Почасово', 'Правки', 1000, 0, 0, 'hour'],
-].map((a, i) => ({ id: (a[5] ? 'h' : 'd') + i, cat: a[0], name: a[1], p: [a[2], a[3], a[4]], type: a[5] || 'lv' }));
+  ['Персонаж', 'Моделирование персонажа', 10000, 30000, 80000, 'lv', 40, 'c1'],
+  ['Персонаж', 'Моделирование одежды', 4000, 10000, 25000, 'lv', 40, 'c2'],
+  // [категория, название, цены ×3, тип, game ready %, id] — новые блоки добавляй только в конец списка
+].map((a, i) => ({ id: a[7] || (a[5] === 'hour' ? 'h' : 'd') + i, cat: a[0], name: a[1], p: [a[2], a[3], a[4]], type: a[5] || 'lv', gr: a[6] || 0 }));
+DEFAULT_CATALOG[0].gr = 40; // моделирование предмета
 
 const DEFAULT_SETTINGS = {
   urg: 0, rig: 0, wear: 5, dis: 0, prem: false, tax: false, taxRate: 4,
@@ -78,9 +82,13 @@ state.catalog.forEach((it) => {
   if (!it.type) it.type = it.single ? (/час/i.test(it.name) ? 'hour' : 'single') : 'lv';
   delete it.single;
 });
-if (!load('pw_v2', false)) {
-  cloneDefaults().filter((d) => isHour(d) && !itemById(d.id)).forEach((d) => state.catalog.push(d));
-  try { localStorage.setItem('pw_v2', '1'); } catch {}
+// v3: почасовые блоки, персонаж/одежда и game ready у существующих блоков
+if (!load('pw_v3', false)) {
+  const defs = cloneDefaults();
+  state.catalog.forEach((it) => { if (it.gr == null) it.gr = (defs.find((d) => d.id === it.id) || {}).gr || 0; });
+  defs.filter((d) => d.id[0] !== 'd' && !itemById(d.id)).forEach((d) => state.catalog.push(d));
+  try { localStorage.setItem('pw_v3', '1'); } catch {}
+  save();
 }
 
 let toastT;
@@ -93,7 +101,7 @@ function fillRange(r) { r.style.setProperty('--v', ((r.value - r.min) / (r.max -
 // ---------- расчёт ----------
 function lineSum(l) {
   const it = itemById(l.itemId); if (!it) return 0;
-  return basePrice(it, l) * l.qty * l.mult;
+  return basePrice(it, l) * l.qty * l.mult * (l.gr && it.gr > 0 ? 1 + it.gr / 100 : 1);
 }
 function calc() {
   const s = state.set;
@@ -138,7 +146,7 @@ function renderLib() {
 // ---------- смета ----------
 let justAdded = null;
 function addLine(itemId) {
-  const ex = state.lines.find((l) => l.itemId === itemId && l.level === 1 && l.mult === 1);
+  const ex = state.lines.find((l) => l.itemId === itemId && l.level === 1 && l.mult === 1 && !l.gr);
   if (ex) ex.qty++;
   else { justAdded = uid(); state.lines.push({ uid: justAdded, itemId, level: 1, qty: 1, mult: 1 }); }
   save(); renderLines(); justAdded = null;
@@ -183,6 +191,13 @@ function renderLines() {
     m.append(el('span', '', 'сложность'), mr, mv);
 
     row.append(l1, l2, m);
+    if (it.gr > 0 && !isHour(it)) {
+      const g = el('label', 'chk');
+      const gc = el('input'); gc.type = 'checkbox'; gc.checked = !!l.gr;
+      gc.onchange = () => { l.gr = gc.checked; save(); renderLines(); };
+      g.append(gc, el('i'), document.createTextNode('Game ready +' + it.gr + '%'));
+      row.appendChild(g);
+    }
     box.appendChild(row);
   });
   renderTotals();
@@ -267,9 +282,9 @@ function clientText() {
   state.lines.forEach((l, i) => {
     const it = itemById(l.itemId);
     const lvl = hasLv(it) ? ' (' + LV_FULL[l.level] + ')' : '';
-    const unit = basePrice(it, l);
+    const unit = basePrice(it, l) * (l.gr && it.gr > 0 ? 1 + it.gr / 100 : 1); // цена за единицу уже с game ready
     const k = l.mult !== 1 ? ' × коэф. ' + l.mult.toFixed(1) : '';
-    L.push((i + 1) + '. ' + it.name + lvl);
+    L.push((i + 1) + '. ' + it.name + lvl + (l.gr && it.gr > 0 ? ', game ready (+' + it.gr + '%)' : ''));
     L.push('   ' + qtyStr(it, l.qty) + ' × ' + money(unit) + (isHour(it) ? '/ч' : '') + k + ' = ' + money(lineSum(l)));
   });
   if (!n) L.push('(позиций нет)');
@@ -305,12 +320,17 @@ function renderPrice() {
     const ty = el('select', 'ty');
     Object.entries(TYPES).forEach(([k, t]) => { const o = el('option', '', t); o.value = k; ty.appendChild(o); });
     ty.value = it.type;
+    const gl = el('label', 'gr'); gl.append(document.createTextNode('Game ready, +%'));
+    const gi = el('input'); gi.type = 'number'; gi.min = 0; gi.value = it.gr || 0; gi.title = '0 — не показывать галочку';
+    gi.oninput = () => { it.gr = Math.max(0, parseFloat(gi.value) || 0); };
+    gl.appendChild(gi);
     const sync = () => {
       ps[1].style.visibility = ps[2].style.visibility = hasLv(it) ? 'visible' : 'hidden';
       ps[0].title = isHour(it) ? '₽ за час' : hasLv(it) ? LV[0] : 'Цена';
+      gl.style.display = isHour(it) ? 'none' : '';
     };
     ty.onchange = () => { it.type = ty.value; sync(); };
-    r.appendChild(ty); sync();
+    r.append(ty, gl); sync();
     box.appendChild(r);
   });
 }
