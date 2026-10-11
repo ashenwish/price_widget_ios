@@ -1,0 +1,61 @@
+/* Поверх style.css: телефон, полный экран, скролл страницы вместо фиксированного окна */
+html, body { height: auto; min-height: 100%; overflow: auto; background: var(--bg); -webkit-text-size-adjust: 100%; }
+body { font-size: 15px; -webkit-tap-highlight-color: transparent; }
+button, input, select, label { touch-action: manipulation; }
+
+.app {
+  height: auto; min-height: 100dvh; border: 0; border-radius: 0; overflow: visible; gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 12px)
+           calc(env(safe-area-inset-bottom) + 16px) calc(env(safe-area-inset-left) + 12px);
+}
+.bar { -webkit-app-region: none; }
+.bar-btns { -webkit-app-region: none; }
+.ib { width: 38px; height: 38px; font-size: 17px; }
+.brand { font-size: 12px; }
+
+/* библиотека: чипы в одну строку с горизонтальным скроллом */
+.lib { height: auto; }
+.chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -10px; padding: 0 10px 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { padding: 6px 13px; font-size: 13px; flex: none; }
+.libList { max-height: 40vh; }
+.blk { padding: 10px 10px 10px 14px; cursor: default; }
+.blk .p { font-size: 12px; }
+.add { width: 32px; height: 32px; font-size: 20px; }
+
+/* смета */
+.est { flex: none; }
+.drop { min-height: 120px; overflow: visible; }
+.line { padding: 10px 12px; gap: 8px; }
+.lv button { padding: 5px 11px; font-size: 13px; }
+.qty button { width: 30px; height: 30px; font-size: 16px; }
+.qty span { min-width: 34px; font-size: 14px; }
+.x { width: 28px; height: 28px; font-size: 13px; }
+.mult { font-size: 12px; }
+
+/* итог выше настроек — видно сразу под сметой */
+.tot { order: 1; }
+.set { order: 2; }
+.toast, .modal { order: 3; }
+.big b { font-size: 30px; }
+.btn { padding: 12px; font-size: 15px; }
+.seg button { padding: 5px 18px; font-size: 15px; }
+
+/* крупнее ползунки и галочки под палец */
+input[type=range] { height: 8px; margin: 8px 0; }
+input[type=range]::-webkit-slider-thumb { width: 26px; height: 26px; }
+.chk i { width: 24px; height: 24px; }
+.checks { flex-wrap: wrap; row-gap: 8px; }
+.chk { white-space: nowrap; }
+.sl span { font-size: 14px; }
+
+/* iOS приближает страницу при фокусе на поле со шрифтом < 16px */
+input[type=number], input:not([type]), select { font-size: 16px; }
+
+/* редактор прайса — во весь экран */
+.modal { position: fixed; padding: calc(env(safe-area-inset-top) + 10px) 10px calc(env(safe-area-inset-bottom) + 10px); }
+.modal .card { height: 100%; }
+.pitem { padding: 10px; gap: 7px; grid-template-columns: 1fr 1fr 1fr 32px; }
+.pitem input, .pitem select { padding: 7px 10px; }
+
+.toast { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 20px); font-size: 14px; }
